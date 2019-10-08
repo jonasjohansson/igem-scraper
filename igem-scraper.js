@@ -1,14 +1,16 @@
 const rp = require('request-promise');
 const csv = require('csv-parser');
+const ObjectsToCsv = require('objects-to-csv');
 const fs = require('fs');
 const $ = require('cheerio');
 
-const searchString = 'sulfur';
+const searchString = 'dna';
 const teamObjects = [];
 const matches = [];
 
-var maxResults = 100;
-var i = 0;
+var maxResults = 5;
+var count = 0;
+var scrapeIndex = 0;
 
 fs.createReadStream('0__team_list__2019-10-07.csv')
 	.pipe(csv())
@@ -23,24 +25,50 @@ fs.createReadStream('0__team_list__2019-10-07.csv')
 		};
 		teamObject.url = `https://${teamObject.year}.igem.org/Team:${teamObject.team}/Description`;
 		if (teamObject.status === 'Accepted') {
-			if (i++ <= maxResults) teamObjects.push(teamObject);
+			teamObjects.push(teamObject);
+			// if (count++ < maxResults) teamObjects.push(teamObject);
 		}
 	})
 	.on('end', () => {
-		for (let teamObject of teamObjects) {
-			rp(teamObject.url)
-				.then(function(html) {
-					return $('p', html)
-						.text()
-						.toLowerCase();
-				})
-				.then(function(text) {
-					if (text.includes(searchString)) {
-						matches.push(teamObject);
-						console.log(teamObject.url);
-					}
-				})
-				.catch(function(err) {});
-		}
 		console.log('CSV file successfully processed');
+		scrape(teamObjects[0]);
 	});
+
+function scrape(object) {
+	console.log(scrapeIndex);
+	rp(object.url)
+		.then(function(html) {
+			return $('p', html).text();
+		})
+		.then(function(text) {
+			text = strip(text);
+			object.text = text;
+			if (text.includes(searchString)) {
+				matches.push(object);
+			}
+		})
+		.finally(function() {
+			// if (scrapeIndex < maxResults - 1) {
+			if (scrapeIndex < teamObjects.length - 1) {
+				scrapeIndex++;
+				scrape(teamObjects[scrapeIndex]);
+			} else {
+				console.log('Finally!');
+				for (var match of matches) {
+					console.log(match.url);
+				}
+				const csv = new ObjectsToCsv(teamObjects);
+				const csv2 = new ObjectsToCsv(matches);
+				csv.toDisk('./teamObjects.csv');
+				csv2.toDisk('./matches.csv');
+			}
+		});
+}
+
+function strip(str) {
+	str = str.replace(/[^\w\s]/gi, '');
+	str = str.replace(/[\r\n\t]+/gm, '');
+	str = str.trim();
+	str = str.toLowerCase();
+	return str;
+}
