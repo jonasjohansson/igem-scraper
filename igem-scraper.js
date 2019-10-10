@@ -4,7 +4,7 @@ const ObjectsToCsv = require('objects-to-csv');
 const fs = require('fs');
 const $ = require('cheerio');
 
-const searchString = 'dna';
+const searchString = 'antibiotic';
 const teamObjects = [];
 const matches = [];
 
@@ -43,9 +43,9 @@ function scrape(object) {
 		.then(function(text) {
 			text = strip(text);
 			object.text = text;
-			if (text.includes(searchString)) {
-				matches.push(object);
-			}
+			// if (text.includes(searchString)) {
+			matches.push(object);
+			// }
 		})
 		.finally(function() {
 			// if (scrapeIndex < maxResults - 1) {
@@ -54,12 +54,18 @@ function scrape(object) {
 				scrape(teamObjects[scrapeIndex]);
 			} else {
 				console.log('Finally!');
-				for (var match of matches) {
-					console.log(match.url);
-				}
-				const csv = new ObjectsToCsv(teamObjects);
+				matches.sort(function(a, b) {
+					return a.year - b.year;
+				});
+				// teamObjects.sort(function(a, b) {
+				// 	return a.year - b.year;
+				// });
+				// for (var match of matches) {
+				// 	console.log(match.url);
+				// }
+				// const csv = new ObjectsToCsv(teamObjects);
 				const csv2 = new ObjectsToCsv(matches);
-				csv.toDisk('./teamObjects.csv');
+				// csv.toDisk('./allTeamObjects.csv');
 				csv2.toDisk('./matches.csv');
 			}
 		});
